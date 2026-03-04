@@ -86,6 +86,7 @@ function setupEventListeners() {
           document.getElementById('modalProjectPath').value = filePath;
           const dirName = filePath.split('/').pop() || filePath;
           document.getElementById('modalProjectName').value = dirName;
+          syncProjectPathToFolderList(filePath);
         }, 50);
       } else if (pathInfo.isFile) {
         // 文件 → 作为可执行命令添加
@@ -96,6 +97,7 @@ function setupEventListeners() {
           document.getElementById('modalProjectPath').value = dirPath;
           document.getElementById('modalProjectName').value = fileName;
           renderCommandInputs([filePath], ['']);
+          syncProjectPathToFolderList(dirPath);
         }, 50);
       }
     }
@@ -187,11 +189,29 @@ function setupEventListeners() {
 
   document.getElementById('browseProjectPathBtn').addEventListener('click', async () => {
     const result = await window.electronAPI.selectFolder();
-    if (!result.canceled) document.getElementById('modalProjectPath').value = result.path;
+    if (!result.canceled) {
+      document.getElementById('modalProjectPath').value = result.path;
+      if (!isEditMode) syncProjectPathToFolderList(result.path);
+    }
+  });
+  document.getElementById('modalProjectPath').addEventListener('change', () => {
+    if (!isEditMode) {
+      const val = document.getElementById('modalProjectPath').value.trim();
+      if (val) syncProjectPathToFolderList(val);
+    }
   });
   document.getElementById('browseOutputPathBtn').addEventListener('click', async () => {
     const result = await window.electronAPI.selectFolder();
-    if (!result.canceled) document.getElementById('modalOutputPath').value = result.path;
+    if (!result.canceled) {
+      document.getElementById('modalOutputPath').value = result.path;
+      if (!isEditMode) syncProjectPathToFolderList(result.path);
+    }
+  });
+  document.getElementById('modalOutputPath').addEventListener('change', () => {
+    if (!isEditMode) {
+      const val = document.getElementById('modalOutputPath').value.trim();
+      if (val) syncProjectPathToFolderList(val);
+    }
   });
 
 
@@ -2016,6 +2036,29 @@ function addFolderInputWithValue(folderPath = '', name = '') {
 
 function addFolderInput() {
   addFolderInputWithValue('', '');
+}
+
+// 新建项目时，将项目路径自动同步为文件夹列表的第一条
+function syncProjectPathToFolderList(projPath) {
+  if (!projPath) return;
+  const list = document.getElementById('foldersList');
+  const existing = list.querySelectorAll('.command-item');
+  // 如果第一条路径为空或未填，替换它；否则在顶部插入
+  if (existing.length > 0) {
+    const firstPathInput = existing[0].querySelectorAll('input')[0];
+    if (firstPathInput && !firstPathInput.value.trim()) {
+      firstPathInput.value = projPath;
+      return;
+    }
+  }
+  // 检查是否已存在相同路径，避免重复添加
+  for (const item of existing) {
+    const inp = item.querySelectorAll('input')[0];
+    if (inp && inp.value.trim() === projPath) return;
+  }
+  // 在列表顶部插入
+  addFolderInputWithValue(projPath, '');
+  if (list.children.length > 1) list.insertBefore(list.lastChild, list.firstChild);
 }
 
 // === File Inputs (Modal) ===
