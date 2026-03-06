@@ -125,7 +125,19 @@ class Scheduler {
       ? current.projectPath
       : app.getPath('desktop');
 
-    const proc = spawn('bash', ['-c', `cd '${workDir.replace(/'/g, "'\\''")}' && ${current.command}`], {
+    // 使用用户默认 shell 并加载 RC 文件以获取完整 PATH（与静默执行一致）
+    const userShell = process.env.SHELL || '/bin/zsh';
+    const home = process.env.HOME || '';
+    let rcFile = '';
+    if (userShell.endsWith('/zsh')) rcFile = `${home}/.zshrc`;
+    else if (userShell.endsWith('/bash')) rcFile = `${home}/.bashrc`;
+    else if (userShell.endsWith('/fish')) rcFile = `${home}/.config/fish/config.fish`;
+
+    const escapedWorkDir = workDir.replace(/'/g, "'\\''");
+    const sourceCmd = rcFile ? `[ -f "${rcFile}" ] && . "${rcFile}" 2>/dev/null; ` : '';
+    const fullCmd = `${sourceCmd}cd '${escapedWorkDir}' && ${current.command}`;
+
+    const proc = spawn(userShell, ['-l', '-c', fullCmd], {
       detached: false,
       stdio: ['ignore', 'pipe', 'pipe'],
       env: { ...process.env, ELECTRON_RUN_AS_NODE: undefined },
