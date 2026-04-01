@@ -22,6 +22,7 @@ start-everything-settings.json
 # Tool-specific
 .serena/
 .claude/
+.autonomous/
 
 # Keep build assets
 !build/icon.*

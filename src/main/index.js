@@ -3,6 +3,7 @@ const path = require('path');
 const ProjectStore = require('./store');
 const Scheduler = require('./scheduler');
 const { registerIpcHandlers } = require('./ipc-handlers');
+const { initLogger, getLogger } = require('./logger');
 
 let mainWindow;
 let store;
@@ -59,19 +60,36 @@ function activateMainWindow() {
 }
 
 app.whenReady().then(() => {
+  // 初始化数据层（需要 userDataPath，先于 logger 初始化）
+  const userDataPath = app.getPath('userData');
+  store = new ProjectStore(userDataPath);
+
+  // 初始化结构化日志（日志文件写入 userData/logs/）
+  initLogger(userDataPath);
+  const log = getLogger();
+
   // macOS Dock 图标
   if (process.platform === 'darwin' && app.dock) {
     try {
       const icon = nativeImage.createFromPath(iconPath);
       if (!icon.isEmpty()) app.dock.setIcon(icon);
     } catch (e) {
-      console.error('Dock 图标设置失败:', e.message);
+      log.error({
+        event: 'error_occurred',
+        status: 'failed',
+        decision_reason: 'dock_icon_load_failed',
+        error: e.message,
+      }, 'Dock icon setup failed');
     }
   }
 
-  // 初始化数据层
-  const userDataPath = app.getPath('userData');
-  store = new ProjectStore(userDataPath);
+  log.info({
+    event: 'system_started',
+    status: 'success',
+    version: app.getVersion(),
+    platform: process.platform,
+    userDataPath,
+  }, 'Application started');
 
   // 初始化调度引擎
   scheduler = new Scheduler(store, () => mainWindow);
@@ -89,7 +107,13 @@ app.whenReady().then(() => {
     try {
       globalShortcut.register(savedShortcut, activateMainWindow);
     } catch (e) {
-      console.error('Failed to register global shortcut:', e.message);
+      log.error({
+        event: 'error_occurred',
+        status: 'failed',
+        decision_reason: 'shortcut_register_failed',
+        shortcut: savedShortcut,
+        error: e.message,
+      }, 'Failed to register global shortcut');
     }
   }
 });
@@ -97,6 +121,10 @@ app.whenReady().then(() => {
 app.on('will-quit', () => {
   if (scheduler) scheduler.shutdown();
   globalShortcut.unregisterAll();
+  getLogger().info({
+    event: 'system_stopped',
+    status: 'success',
+  }, 'Application stopped');
 });
 
 app.on('window-all-closed', () => {

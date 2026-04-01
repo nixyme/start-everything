@@ -2,6 +2,8 @@ const cron = require('node-cron');
 const { spawn } = require('child_process');
 const { Notification, app } = require('electron');
 const fs = require('fs');
+const { v4: uuidv4 } = require('uuid');
+const { getLogger, withTrace } = require('./logger');
 
 const MAX_STDOUT = 10 * 1024; // 10KB
 
@@ -20,7 +22,11 @@ class Scheduler {
         this._startJob(schedule);
       }
     }
-    console.log(`[Scheduler] Restored ${this.jobs.size} active schedule(s)`);
+    getLogger().info({
+      event: 'system_started',
+      status: 'success',
+      active_schedules: this.jobs.size,
+    }, 'Scheduler initialized');
   }
 
   shutdown() {
@@ -32,7 +38,10 @@ class Scheduler {
       try { proc.kill('SIGTERM'); } catch { /* ignore */ }
     }
     this.runningProcesses.clear();
-    console.log('[Scheduler] Shutdown complete');
+    getLogger().info({
+      event: 'system_stopped',
+      status: 'success',
+    }, 'Scheduler shutdown complete');
   }
 
   addSchedule(data) {
@@ -88,7 +97,13 @@ class Scheduler {
 
   _startJob(schedule) {
     if (!cron.validate(schedule.cronExpression)) {
-      console.error(`[Scheduler] Invalid cron: ${schedule.cronExpression} for ${schedule.id}`);
+      getLogger().error({
+        event: 'error_occurred',
+        status: 'failed',
+        decision_reason: 'invalid_cron_expression',
+        schedule_id: schedule.id,
+        cron_expression: schedule.cronExpression,
+      }, 'Invalid cron expression, job not started');
       return;
     }
     const task = cron.schedule(schedule.cronExpression, () => {
@@ -108,7 +123,13 @@ class Scheduler {
   _executeCommand(schedule) {
     // 防并发：同一 schedule 正在运行则跳过
     if (this.runningProcesses.has(schedule.id)) {
-      console.log(`[Scheduler] Skipping ${schedule.id}: already running`);
+      getLogger().warn({
+        event: 'job_started',
+        status: 'skipped',
+        decision_reason: 'job_already_running',
+        schedule_id: schedule.id,
+        project_name: schedule.projectName,
+      }, 'Skipping job: already running');
       return;
     }
 
@@ -116,6 +137,9 @@ class Scheduler {
     const current = this.store.getAllSchedules().find(s => s.id === schedule.id);
     if (!current || !current.enabled) return;
 
+    // 生成本次执行的 trace_id
+    const traceId = uuidv4();
+    const log = withTrace(traceId);
     const startTime = new Date().toISOString();
     let stdout = '';
     let stderr = '';
@@ -136,6 +160,17 @@ class Scheduler {
     const escapedWorkDir = workDir.replace(/'/g, "'\\''");
     const sourceCmd = rcFile ? `[ -f "${rcFile}" ] && . "${rcFile}" 2>/dev/null; ` : '';
     const fullCmd = `${sourceCmd}cd '${escapedWorkDir}' && ${current.command}`;
+
+    log.info({
+      event: 'job_started',
+      status: 'running',
+      schedule_id: current.id,
+      project_name: current.projectName,
+      command_name: current.commandName,
+      cron_expression: current.cronExpression,
+      work_dir: workDir,
+      trigger: 'scheduled',
+    }, 'Scheduled job started');
 
     const proc = spawn(userShell, ['-l', '-c', fullCmd], {
       detached: false,
@@ -178,6 +213,22 @@ class Scheduler {
       if (signal === 'SIGTERM' || signal === 'SIGKILL') status = 'timeout';
       else if (code !== 0) status = 'failed';
 
+      const eventName = status === 'success' ? 'job_succeeded' : 'job_failed';
+      log[status === 'success' ? 'info' : 'error']({
+        event: eventName,
+        status,
+        schedule_id: current.id,
+        project_name: current.projectName,
+        command_name: current.commandName,
+        exit_code: code,
+        signal,
+        latency_ms: durationMs,
+        trigger: 'scheduled',
+        ...(status !== 'success' && {
+          decision_reason: signal ? 'process_timeout' : 'non_zero_exit_code',
+        }),
+      }, `Scheduled job ${status}`);
+
       this._onComplete(current, {
         startTime, endTime, durationMs, exitCode: code, stdout, stderr, status,
       });
@@ -189,6 +240,19 @@ class Scheduler {
 
       const endTime = new Date().toISOString();
       const durationMs = new Date(endTime) - new Date(startTime);
+
+      log.error({
+        event: 'job_failed',
+        status: 'error',
+        decision_reason: 'spawn_error',
+        schedule_id: current.id,
+        project_name: current.projectName,
+        command_name: current.commandName,
+        error: err.message,
+        latency_ms: durationMs,
+        trigger: 'scheduled',
+      }, 'Scheduled job spawn error');
+
       this._onComplete(current, {
         startTime, endTime, durationMs, exitCode: -1,
         stdout, stderr: err.message, status: 'error',

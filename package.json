@@ -29,6 +29,7 @@
   },
   "dependencies": {
     "node-cron": "^3.0.3",
+    "pino": "^8.21.0",
     "uuid": "^9.0.0"
   },
   "build": {

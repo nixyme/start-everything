@@ -2,6 +2,7 @@ const { ipcMain, dialog, shell, BrowserWindow, app, globalShortcut } = require('
 const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const { getLogger } = require('./logger');
 
 // Shell 特殊字符转义（防注入）
 function escapeShellArg(str) {
@@ -667,15 +668,35 @@ end tell`;
     const autoFile = getAutoLaunchPath();
     const fileExists = autoFile ? fs.existsSync(autoFile) : false;
     const electronSetting = app.getLoginItemSettings().openAtLogin;
-    console.log('[Auto Launch] Get: file=%s, electron=%s, platform=%s', fileExists, electronSetting, process.platform);
+    getLogger().debug({
+      event: 'job_started',
+      status: 'success',
+      action: 'get_auto_launch',
+      file_exists: fileExists,
+      electron_setting: electronSetting,
+      platform: process.platform,
+    }, 'Get auto-launch status');
     return fileExists || electronSetting;
   });
 
   ipcMain.handle('set-auto-launch', (_event, enabled) => {
-    console.log('[Auto Launch] Set:', enabled, 'platform:', process.platform, 'packaged:', app.isPackaged);
+    const log = getLogger();
+    log.info({
+      event: 'job_started',
+      status: 'running',
+      action: 'set_auto_launch',
+      enabled,
+      platform: process.platform,
+      packaged: app.isPackaged,
+    }, 'Setting auto-launch');
 
     if (!app.isPackaged) {
-      console.log('[Auto Launch] Warning: Auto-launch may not work in development mode');
+      log.warn({
+        event: 'error_occurred',
+        status: 'warning',
+        decision_reason: 'dev_mode_auto_launch_unreliable',
+        action: 'set_auto_launch',
+      }, 'Auto-launch may not work in development mode');
     }
 
     try {
@@ -721,11 +742,20 @@ end tell`;
 </dict>
 </plist>`;
           fs.writeFileSync(plistPath, plistContent, 'utf-8');
-          console.log('[Auto Launch] macOS: plist created at', plistPath);
+          log.info({
+            event: 'job_succeeded',
+            status: 'success',
+            action: 'create_plist',
+            plist_path: plistPath,
+          }, 'macOS LaunchAgent plist created');
         } else {
           if (fs.existsSync(plistPath)) {
             fs.unlinkSync(plistPath);
-            console.log('[Auto Launch] macOS: plist removed');
+            log.info({
+              event: 'job_succeeded',
+              status: 'success',
+              action: 'remove_plist',
+            }, 'macOS LaunchAgent plist removed');
           }
         }
       }
@@ -752,11 +782,20 @@ NoDisplay=false
 Comment=Manage and launch CLI projects
 `;
           fs.writeFileSync(desktopPath, desktopContent, 'utf-8');
-          console.log('[Auto Launch] Linux: .desktop created at', desktopPath);
+          log.info({
+            event: 'job_succeeded',
+            status: 'success',
+            action: 'create_desktop_entry',
+            desktop_path: desktopPath,
+          }, 'Linux XDG autostart entry created');
         } else {
           if (fs.existsSync(desktopPath)) {
             fs.unlinkSync(desktopPath);
-            console.log('[Auto Launch] Linux: .desktop removed');
+            log.info({
+              event: 'job_succeeded',
+              status: 'success',
+              action: 'remove_desktop_entry',
+            }, 'Linux XDG autostart entry removed');
           }
         }
       }
@@ -770,17 +809,37 @@ Comment=Manage and launch CLI projects
 
       // macOS/Linux: if file is correct but Electron login item lingers, retry
       if (fileOk && !electronOk) {
-        console.log('[Auto Launch] Electron login item out of sync, retrying...');
+        log.warn({
+          event: 'retry_scheduled',
+          status: 'retrying',
+          decision_reason: 'electron_login_item_out_of_sync',
+          action: 'set_auto_launch',
+          enabled,
+        }, 'Electron login item out of sync, retrying');
         app.setLoginItemSettings({ openAtLogin: enabled });
       }
 
       const finalElectronOk = app.getLoginItemSettings().openAtLogin === enabled;
       const verified = fileOk && finalElectronOk;
-      console.log('[Auto Launch] Verified: file=%s, electron=%s, final=%s', fileOk, finalElectronOk, verified);
+      log.info({
+        event: 'job_succeeded',
+        status: verified ? 'success' : 'failed',
+        action: 'set_auto_launch',
+        file_ok: fileOk,
+        electron_ok: finalElectronOk,
+        verified,
+        ...((!verified) && { decision_reason: 'auto_launch_verification_failed' }),
+      }, `Auto-launch set ${verified ? 'verified' : 'unverified'}`);
 
       return { success: verified, value: enabled };
     } catch (e) {
-      console.error('[Auto Launch] Error:', e);
+      log.error({
+        event: 'job_failed',
+        status: 'error',
+        decision_reason: 'auto_launch_set_exception',
+        action: 'set_auto_launch',
+        error: e.message,
+      }, 'Auto-launch set failed');
       return { success: false, error: e.message };
     }
   });

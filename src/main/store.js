@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
+const { getLogger } = require('./logger');
 
 class ProjectStore {
   constructor(userDataPath) {
@@ -118,7 +119,12 @@ class ProjectStore {
         }
       }
     } catch (e) {
-      console.error('Backup failed:', e.message);
+      getLogger().error({
+        event: 'error_occurred',
+        status: 'failed',
+        decision_reason: 'backup_write_failed',
+        error: e.message,
+      }, 'Project data backup failed');
     }
   }
 
