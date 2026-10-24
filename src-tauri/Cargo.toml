@@ -1,6 +1,6 @@
 [package]
 name = "start-everything-new"
-version = "2.3.0"
+version = "2.3.1"
 description = "Native desktop command launcher"
 authors = ["nixyme"]
 edition = "2021"

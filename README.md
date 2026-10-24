@@ -6,7 +6,7 @@ The application preserves Start Everything's project interface and JSON format. 
 
 ## Install on macOS
 
-The local release is available in `dist/START EVERYTHING.app` and `dist/start-everything-tauri-2.3.0-arm64.dmg` after packaging. Open the disk image and drag the application to Applications.
+The local release is available in `dist/START EVERYTHING.app` and `dist/start-everything-tauri-2.3.1-arm64.dmg` after packaging. Open the disk image and drag the application to Applications.
 
 The current build targets Apple Silicon and macOS 12 or later. It uses an ad hoc signature. Apple notarization requires a Developer ID certificate and credentials.
 

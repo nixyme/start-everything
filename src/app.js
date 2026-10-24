@@ -2756,18 +2756,18 @@ function showToast(message, type = 'info') {
 }
 
 // === Confirm Dialog ===
-function showConfirm(title, message) {
+function showConfirm(title, message, options = {}) {
   return new Promise(resolve => {
     const overlay = document.createElement('div');
     overlay.className = 'confirm-overlay';
     overlay.innerHTML = `
       <div class="confirm-dialog">
-        ${icons.trash}
+        ${options.icon === null ? '' : (options.icon || icons.trash)}
         <h3>${escapeHtml(title)}</h3>
         <p>${escapeHtml(message)}</p>
         <div class="confirm-actions">
           <button class="btn-secondary confirm-cancel">${t('confirm.cancel')}</button>
-          <button class="btn-danger confirm-ok" style="background:var(--danger);color:white;border:none;">${t('confirm.delete')}</button>
+          <button class="btn-danger confirm-ok" style="background:var(--danger);color:white;border:none;">${escapeHtml(options.okText || t('confirm.delete'))}</button>
         </div>
       </div>
     `;
@@ -3008,7 +3008,7 @@ function setupSettings() {
     }
     await renderDataDirInfo();
     // 立即重启生效；拒绝则下次启动自动生效
-    const restart = await showConfirm(t('update.confirmTitle'), t('settings.dataDirRestartPrompt'));
+    const restart = await showConfirm(t('update.confirmTitle'), t('settings.dataDirRestartPrompt'), { okText: t('confirm.ok'), icon: null });
     if (restart) {
       const relaunch = await window.electronAPI.relaunchApp();
       if (!relaunch.success) showToast(t('settings.dataDirFailed') + ': ' + relaunch.error, 'error');
@@ -3024,7 +3024,7 @@ function setupSettings() {
       return;
     }
     await renderDataDirInfo();
-    const restart = await showConfirm(t('update.confirmTitle'), t('settings.dataDirRestartPrompt'));
+    const restart = await showConfirm(t('update.confirmTitle'), t('settings.dataDirRestartPrompt'), { okText: t('confirm.ok'), icon: null });
     if (restart) {
       const relaunch = await window.electronAPI.relaunchApp();
       if (!relaunch.success) showToast(t('settings.dataDirFailed') + ': ' + relaunch.error, 'error');
@@ -3163,7 +3163,7 @@ async function updateInstall() {
   const path = u.info?.downloaded?.path;
   if (!path || u.state !== 'ready') return;
   const version = u.info.downloaded.version || u.info.latestVersion;
-  const confirmed = await showConfirm(t('update.confirmTitle'), t('update.confirmMsg', { version }));
+  const confirmed = await showConfirm(t('update.confirmTitle'), t('update.confirmMsg', { version }), { okText: t('confirm.ok'), icon: null });
   if (!confirmed) return;
   const result = await window.electronAPI.installUpdate(path);
   if (result.success && result.data?.restarting) {
