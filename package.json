@@ -1,0 +1,20 @@
+{
+  "name": "start-everything-new",
+  "version": "2.3.0",
+  "private": true,
+  "description": "Start Everything — native desktop command launcher",
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "build:mac": "tauri build --bundles app,dmg",
+    "build:win": "tauri build --bundles nsis",
+    "build:linux": "tauri build --bundles appimage,deb",
+    "check": "node --check src/app.js && node --check src/i18n.js && node --check src/bridge.js",
+    "test": "cargo test --manifest-path src-tauri/Cargo.toml",
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.10.1"
+  },
+  "packageManager": "pnpm@10.12.3"
+}

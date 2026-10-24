@@ -1,0 +1,12 @@
+node_modules/
+src-tauri/target/
+src-tauri/.work/
+dist/
+processing/
+.work/
+.env
+.DS_Store
+__pycache__/
+*.pyc
+src-tauri/gen/schemas/
+.spec-workflow/

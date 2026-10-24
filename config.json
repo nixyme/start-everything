@@ -1,0 +1,5 @@
+{
+  "dataDirectory": "${START_EVERYTHING_DATA_DIR}",
+  "disableScheduler": "${START_EVERYTHING_DISABLE_SCHEDULER}",
+  "logging": "${RUST_LOG}"
+}

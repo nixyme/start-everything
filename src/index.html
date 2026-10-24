@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src ipc: http://ipc.localhost; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:">
+    <title>START EVERYTHING</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2 data-i18n="sidebar.title">Projects</h2>
+                <button id="updateChip" class="update-chip" style="display:none;" title=""></button>
+                <div class="header-buttons">
+                    <button id="addProjectBtn" class="btn-icon-add" data-i18n-title="sidebar.newProject" title="New Project (⌘N)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    </button>
+                    <button id="scheduleLogsBtn" class="btn-icon has-tooltip" title="Schedule Logs">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                        <span class="tooltip-text" data-i18n="logs.title">Logs</span>
+                    </button>
+                    <button id="settingsBtn" class="btn-icon has-tooltip" title="Settings">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                        <span class="tooltip-text" data-i18n="sidebar.settings">Settings</span>
+                    </button>
+                </div>
+            </div>
+            <div class="search-wrapper">
+                <div class="search-container">
+                    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="text" id="searchInput" class="search-input" data-i18n-placeholder="sidebar.search" placeholder="Search projects...">
+                    <div id="searchHistoryDropdown" class="search-history-dropdown" style="display:none;"></div>
+                </div>
+            </div>
+            <div class="project-list" id="projectList"></div>
+        </div>
+        <div class="main-content">
+            <div class="welcome" id="welcomeMessage">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                <h1><span data-i18n="welcome.title">Start Everything</span><span id="appVersionBadge" class="version-badge" style="display:none;"></span></h1>
+                <p data-i18n="welcome.subtitle">Select a project or create a new one</p>
+                <div class="shortcut-hint"><kbd>⌘</kbd> + <kbd>N</kbd> <span data-i18n="welcome.shortcut">to add project</span></div>
+                <div class="shortcut-hint" id="globalShortcutHint" style="display:none;"></div>
+            </div>
+            <div class="project-details" id="projectDetails" style="display: none;">
+                <div class="details-header">
+                    <h2 id="projectName">Project Name</h2>
+                    <div class="action-buttons">
+                        <button id="editProjectBtn" class="btn-secondary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg><span data-i18n="details.edit">Edit</span></button>
+                        <button id="deleteProjectBtn" class="btn-danger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg><span data-i18n="details.delete">Delete</span></button>
+                    </div>
+                </div>
+                <div class="details-content">
+                    <div class="info-item"><label data-i18n="details.projectPath">Project Path</label><div class="info-value" id="projectPath"></div></div>
+                    <div class="info-item" id="outputPathSection"><label data-i18n="details.outputPath">Output Path</label><div class="info-value"><span id="outputPath"></span><button id="openOutputBtn" class="btn-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span data-i18n="details.open">Open</span></button></div></div>
+                    <div class="info-item"><label data-i18n="details.commands">Commands</label><div id="commandsDisplay" class="commands-display"></div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="projectModal" class="modal"><div class="modal-content"><div class="modal-header"><h3 id="modalTitle" data-i18n="modal.newProject">New Project</h3></div>
+    <div class="modal-body">
+        <div class="form-group"><label data-i18n="modal.projectName">Project Name</label><input type="text" id="modalProjectName" class="form-input" data-i18n-placeholder="modal.projectNamePlaceholder" placeholder="My Project"></div>
+        <div class="form-group"><label data-i18n="modal.projectPath">Project Path</label><div class="input-with-button"><input type="text" id="modalProjectPath" class="form-input" data-i18n-placeholder="modal.selectProjectFolder" placeholder="Select project folder" readonly><button id="browseProjectPathBtn" class="btn-browse"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span data-i18n="modal.browse">Browse</span></button></div></div>
+        <div class="form-group"><label data-i18n="modal.commands">Commands</label><div id="commandsList" class="commands-list"></div><button type="button" id="addCommandBtn" class="btn-add-command" data-i18n="modal.addCommand">+ Add Command</button></div>
+        <div class="form-group"><label data-i18n="modal.outputPath">Output Path</label><div class="input-with-button"><input type="text" id="modalOutputPath" class="form-input" data-i18n-placeholder="modal.selectOutputFolder" placeholder="Select output folder (optional)" readonly><button id="browseOutputPathBtn" class="btn-browse"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span data-i18n="modal.browse">Browse</span></button></div></div>
+        <div class="form-group"><label data-i18n="url.title">URLs</label><div id="urlsList" class="commands-list"></div><button type="button" id="addUrlBtn" class="btn-add-command" data-i18n="url.add">+ Add URL</button></div>
+        <div class="form-group"><label data-i18n="folder.title">Folders</label><div id="foldersList" class="commands-list"></div><button type="button" id="addFolderBtn" class="btn-add-command" data-i18n="folder.add">+ Add Folder</button></div>
+        <div class="form-group"><label data-i18n="file.title">Files</label><div id="filesList" class="commands-list"></div><button type="button" id="addFileBtn" class="btn-add-command" data-i18n="file.add">+ Add File</button></div>
+        <div class="form-group"><label data-i18n="subproject.title">Subprojects</label><div id="subprojectsList" class="subprojects-list"></div><button type="button" id="addSubprojectBtn" class="btn-add-command" data-i18n="subproject.add">+ Add Subproject</button></div>
+    </div>
+    <div class="modal-footer"><button id="cancelModalBtn" class="btn-secondary" data-i18n="modal.cancel">Cancel</button><button id="saveProjectBtn" class="btn-primary" data-i18n="modal.save">Save</button></div>
+    </div></div>
+    <div id="settingsModal" class="modal"><div class="modal-content" style="max-width:480px;"><div class="modal-header"><h3 data-i18n="settings.title">Settings</h3><button class="close-btn" id="closeSettingsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="modal-body">
+        <div class="settings-group"><div class="settings-item"><div class="settings-item-info"><label data-i18n="settings.language">Language</label><span class="settings-desc" data-i18n="settings.languageDesc">Interface language</span></div><select id="langSelect" class="settings-select"><option value="en">English</option><option value="zh">中文</option><option value="ja">日本語</option><option value="fr">Français</option></select></div></div>
+        <div class="settings-group"><div class="settings-item"><div class="settings-item-info"><label data-i18n="settings.terminal">Terminal</label><span class="settings-desc" data-i18n="settings.terminalDesc">Terminal for running commands</span></div><select id="terminalSelect" class="settings-select"><option value="default">Terminal.app</option><option value="kaku">Kaku</option></select></div></div>
+        <div class="settings-group"><div class="settings-item"><div class="settings-item-info"><label data-i18n="settings.shortcut">Global shortcut</label><span class="settings-desc" data-i18n="settings.shortcutDesc">Activate window from anywhere</span></div><div class="shortcut-input-wrap"><input type="text" id="shortcutInput" class="settings-select shortcut-input" readonly placeholder="Click to set"><button id="clearShortcutBtn" class="btn-icon-sm" title="Clear">✕</button></div></div></div>
+        <div class="settings-group"><div class="settings-item"><div class="settings-item-info"><label data-i18n="settings.autoLaunch">Launch at startup</label><span class="settings-desc" data-i18n="settings.autoLaunchDesc">Automatically start when you log in</span></div><label class="toggle-switch"><input type="checkbox" id="autoLaunchToggle"><span class="toggle-slider"></span></label></div></div>
+        <div class="settings-group"><div class="settings-item"><div class="settings-item-info"><label data-i18n="settings.update">Software update</label><span class="settings-desc" id="updateStatus" data-i18n="settings.upToDate">You're up to date</span></div><button id="checkUpdateBtn" class="btn-secondary" data-i18n="settings.checkUpdate">Check</button></div></div>
+        <div class="settings-group"><div class="settings-item"><div class="settings-item-info"><label data-i18n="settings.data">Data</label><span class="settings-desc" data-i18n="settings.dataDesc">Import or export project data</span></div><div class="settings-actions"><button id="importBtn" class="btn-secondary" data-i18n="settings.import">Import</button><button id="exportBtn" class="btn-secondary" data-i18n="settings.export">Export</button><button id="openDataDirBtn" class="btn-icon-sm" data-i18n-title="settings.openDataDir" title="Open data folder"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></button><button id="resetDataBtn" class="btn-icon-sm btn-icon-danger" data-i18n-title="settings.resetData" title="Reset all data"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div></div>
+        <div class="settings-item"><div class="settings-item-info"><label data-i18n="settings.dataDir">Data directory</label><span class="settings-desc settings-dir-path" id="dataDirPath"></span></div><div class="settings-actions"><button id="changeDataDirBtn" class="btn-secondary" data-i18n="settings.changeDataDir">Change</button><button id="resetDataDirBtn" class="btn-secondary" data-i18n="settings.resetDataDir" style="display:none;">Reset</button></div></div></div>
+        <div class="settings-group"><div class="settings-item"><div class="settings-item-info"><label data-i18n="settings.version">Version</label><span class="settings-desc" id="appVersion">-</span></div></div></div>
+        <div class="settings-group settings-about"><div class="settings-item"><div class="settings-item-info"><label data-i18n="settings.about">About</label><span class="settings-desc"><a href="#" id="projectUrlLink" class="settings-link">GitHub</a> · <span data-i18n="settings.author">Author</span>: <span data-i18n="settings.authorName">nixy</span> · <span data-i18n="settings.wechat">WeChat</span>: nixynixynixy</span><span class="settings-desc" data-i18n="settings.welcomeMsg">Welcome to chat & PRs are welcome!</span></div></div></div>
+    </div>
+    </div></div>
+    <div id="toastContainer" class="toast-container"></div>
+    <script src="bridge.js"></script>
+    <script src="frontend-utils.js"></script>
+    <script src="i18n.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
