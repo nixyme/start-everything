@@ -3,6 +3,7 @@ src-tauri/target/
 src-tauri/.work/
 dist/
 processing/
+archived/2026-11-03-visible-updater/
 .work/
 .env
 .DS_Store
