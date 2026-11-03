@@ -8,11 +8,21 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <header class="app-header">
+        <div class="app-brand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg><span>START EVERYTHING</span></div>
+        <section id="updatePanel" class="update-panel" data-state="idle" aria-labelledby="currentVersionLabel">
+            <div class="update-info">
+                <div class="update-versions"><span><span id="currentVersionLabel" data-i18n="update.currentVersion">Current version</span> <strong id="currentVersion">…</strong></span><span id="latestVersion" class="update-latest" hidden></span></div>
+                <div class="update-status" role="status" aria-live="polite"><svg class="update-status-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 7a7 7 0 0 1 11.5-2L20 8M4 16l2.4 3A7 7 0 0 0 17.9 17"/></svg><span id="updateStatus" data-i18n="update.autoCheck">Automatic updates enabled</span></div>
+                <div id="updateProgress" class="update-progress" role="progressbar" aria-labelledby="currentVersionLabel" aria-valuemin="0" aria-valuemax="100" hidden><span id="updateProgressFill"></span></div>
+            </div>
+            <button id="checkUpdateBtn" class="btn-secondary update-action" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 7a7 7 0 0 1 11.5-2L20 8M4 16l2.4 3A7 7 0 0 0 17.9 17"/></svg><span id="updateActionLabel" data-i18n="settings.checkUpdate">Check for updates</span></button>
+        </section>
+    </header>
     <div class="container">
         <div class="sidebar">
             <div class="sidebar-header">
                 <h2 data-i18n="sidebar.title">Projects</h2>
-                <button id="updateChip" class="update-chip" style="display:none;" title=""></button>
                 <div class="header-buttons">
                     <button id="addProjectBtn" class="btn-icon-add" data-i18n-title="sidebar.newProject" title="New Project (⌘N)">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -79,7 +89,6 @@
         <div class="settings-group"><div class="settings-item"><div class="settings-item-info"><label data-i18n="settings.terminal">Terminal</label><span class="settings-desc" data-i18n="settings.terminalDesc">Terminal for running commands</span></div><select id="terminalSelect" class="settings-select"><option value="default">Terminal.app</option><option value="kaku">Kaku</option></select></div></div>
         <div class="settings-group"><div class="settings-item"><div class="settings-item-info"><label data-i18n="settings.shortcut">Global shortcut</label><span class="settings-desc" data-i18n="settings.shortcutDesc">Activate window from anywhere</span></div><div class="shortcut-input-wrap"><input type="text" id="shortcutInput" class="settings-select shortcut-input" readonly placeholder="Click to set"><button id="clearShortcutBtn" class="btn-icon-sm" title="Clear">✕</button></div></div></div>
         <div class="settings-group"><div class="settings-item"><div class="settings-item-info"><label data-i18n="settings.autoLaunch">Launch at startup</label><span class="settings-desc" data-i18n="settings.autoLaunchDesc">Automatically start when you log in</span></div><label class="toggle-switch"><input type="checkbox" id="autoLaunchToggle"><span class="toggle-slider"></span></label></div></div>
-        <div class="settings-group"><div class="settings-item"><div class="settings-item-info"><label data-i18n="settings.update">Software update</label><span class="settings-desc" id="updateStatus" data-i18n="settings.upToDate">You're up to date</span></div><button id="checkUpdateBtn" class="btn-secondary" data-i18n="settings.checkUpdate">Check</button></div></div>
         <div class="settings-group"><div class="settings-item"><div class="settings-item-info"><label data-i18n="settings.data">Data</label><span class="settings-desc" data-i18n="settings.dataDesc">Import or export project data</span></div><div class="settings-actions"><button id="importBtn" class="btn-secondary" data-i18n="settings.import">Import</button><button id="exportBtn" class="btn-secondary" data-i18n="settings.export">Export</button><button id="openDataDirBtn" class="btn-icon-sm" data-i18n-title="settings.openDataDir" title="Open data folder"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></button><button id="resetDataBtn" class="btn-icon-sm btn-icon-danger" data-i18n-title="settings.resetData" title="Reset all data"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div></div>
         <div class="settings-item"><div class="settings-item-info"><label data-i18n="settings.dataDir">Data directory</label><span class="settings-desc settings-dir-path" id="dataDirPath"></span></div><div class="settings-actions"><button id="changeDataDirBtn" class="btn-secondary" data-i18n="settings.changeDataDir">Change</button><button id="resetDataDirBtn" class="btn-secondary" data-i18n="settings.resetDataDir" style="display:none;">Reset</button></div></div></div>
         <div class="settings-group"><div class="settings-item"><div class="settings-item-info"><label data-i18n="settings.version">Version</label><span class="settings-desc" id="appVersion">-</span></div></div></div>

@@ -70,6 +70,7 @@ function closeTopModal() {
 // === Version Display（欢迎区徽章 + 窗口标题）===
 async function setupVersionDisplay() {
   const version = await window.electronAPI.getAppVersion();
+  document.getElementById('currentVersion').textContent = `v${version}`;
   const badge = document.getElementById('appVersionBadge');
   if (badge) {
     badge.textContent = `v${version}`;
@@ -2835,6 +2836,7 @@ function setupSettings() {
   // Language select
   document.getElementById('langSelect').addEventListener('change', async (e) => {
     await setLocale(e.target.value);
+    renderUpdateUi();
     renderProjectList();
     if (currentProject) showProjectDetails();
   });
@@ -3065,19 +3067,20 @@ function setupSettings() {
     }
   });
 
-  renderUpdateSettingsButton();
+  renderUpdateUi();
 }
 
-// === Update Center：启动静默检测 → 新版本自动下载 → 左上角 chip 与设置页共用一套状态 ===
+// 主界面常驻更新入口，启动与每十五分钟自动检查，下载完成后由用户确认重启。
 const UpdateCenter = {
-  state: 'idle', // idle | downloading | ready | error
+  state: 'idle', // idle | checking | downloading | ready | installing | error
   info: null, // check-for-update 响应 data
   percent: 0,
   error: null,
   // 已有下载完成且版本比当前新：直接就绪，不再重复下载
   get downloadedReady() {
     const downloaded = this.info?.downloaded;
-    return !!(downloaded?.version && compareVersions(downloaded.version, this.info.currentVersion) > 0);
+    return !!(downloaded?.path && downloaded.version === this.info.latestVersion
+      && compareVersions(downloaded.version, this.info.currentVersion) > 0);
   },
 };
 
@@ -3098,13 +3101,14 @@ function setUpdateStatus(text) {
 
 async function updateCheck({ silent = false } = {}) {
   const u = UpdateCenter;
-  if (u.state === 'downloading') return;
-  if (!silent) setUpdateStatus(t('settings.checking'));
+  if (['checking', 'downloading', 'installing'].includes(u.state)) return;
+  if (silent && u.state === 'ready') return;
+  u.state = 'checking';
+  renderUpdateUi();
   const result = await window.electronAPI.checkForUpdate();
   if (!result.success) {
     u.state = 'error';
     u.error = result.error;
-    if (!silent) setUpdateStatus(t('settings.updateError') + ': ' + result.error);
     renderUpdateUi();
     return;
   }
@@ -3112,15 +3116,12 @@ async function updateCheck({ silent = false } = {}) {
   u.error = null;
   if (!u.info.isNewer) {
     u.state = 'idle';
-    if (!silent) setUpdateStatus(t('settings.upToDate'));
     renderUpdateUi();
     return;
   }
-  setUpdateStatus(t('settings.newVersion', { version: u.info.latestVersion }));
   if (u.info.autoCapable === false) {
     // 非 .app 环境（开发模式）不自动下载，避免误装
     u.state = 'idle';
-    if (!silent) setUpdateStatus(t('settings.devModeNoUpdate'));
     renderUpdateUi();
     return;
   }
@@ -3143,17 +3144,14 @@ async function updateStartDownload() {
   }
   u.state = 'downloading';
   u.percent = 0;
-  setUpdateStatus(t('settings.downloading'));
   renderUpdateUi();
   const result = await window.electronAPI.downloadUpdate(info.downloadUrl);
   if (result.success) {
     u.state = 'ready';
     u.info.downloaded = { path: result.filePath, version: info.latestVersion, name: null };
-    setUpdateStatus(t('settings.downloadComplete'));
   } else {
     u.state = 'error';
     u.error = result.error;
-    setUpdateStatus(t('settings.updateError') + ': ' + result.error);
   }
   renderUpdateUi();
 }
@@ -3162,90 +3160,76 @@ async function updateInstall() {
   const u = UpdateCenter;
   const path = u.info?.downloaded?.path;
   if (!path || u.state !== 'ready') return;
+  u.state = 'installing';
+  renderUpdateUi();
   const version = u.info.downloaded.version || u.info.latestVersion;
   const confirmed = await showConfirm(t('update.confirmTitle'), t('update.confirmMsg', { version }), { okText: t('confirm.ok'), icon: null });
-  if (!confirmed) return;
+  if (!confirmed) {
+    u.state = 'ready';
+    renderUpdateUi();
+    return;
+  }
   const result = await window.electronAPI.installUpdate(path);
-  if (result.success && result.data?.restarting) {
-    setUpdateStatus(t('update.restarting'));
+  if (result.success && result.restarting) {
     showToast(t('update.restarting'), 'success');
     // 应用应已退出并由升级脚本重启；若 6 秒后仍在运行说明升级脚本失败
     setTimeout(() => {
-      if (UpdateCenter.state === 'ready') {
+      if (UpdateCenter.state === 'installing') {
+        u.state = 'error';
+        u.error = t('update.installFailed') + ': restart timeout';
+        renderUpdateUi();
         showToast(t('update.installFailed') + ': restart timeout', 'error');
         setUpdateStatus(t('update.installFailed') + ': restart timeout');
       }
     }, 6000);
-  } else if (result.success && result.data?.installerOpened) {
-    setUpdateStatus(t('update.installerOpened'));
+  } else if (result.success && result.installerOpened) {
+    u.state = 'ready';
+    renderUpdateUi();
     showToast(t('update.installerOpened'), 'success');
   } else {
     const error = result.error || 'unknown';
     showToast(t('update.installFailed') + ': ' + error, 'error');
-    setUpdateStatus(t('update.installFailed') + ': ' + error);
-    u.state = 'idle';
+    u.error = t('update.installFailed') + ': ' + error;
+    u.state = 'error';
     renderUpdateUi();
   }
 }
 
 function renderUpdateUi() {
   const u = UpdateCenter;
-  const chip = document.getElementById('updateChip');
-  if (chip) {
-    chip.className = 'update-chip';
-    chip.disabled = false;
-    chip.onclick = null;
-    chip.title = '';
-    let visible = true;
-    switch (u.state) {
-      case 'downloading':
-        chip.textContent = t('settings.downloadProgress', { percent: u.percent });
-        chip.classList.add('downloading');
-        chip.disabled = true;
-        break;
-      case 'ready':
-        chip.textContent = t('settings.installRestart');
-        chip.classList.add('ready');
-        chip.title = `v${u.info.downloaded?.version || u.info.latestVersion}`;
-        chip.onclick = updateInstall;
-        break;
-      case 'error':
-        chip.textContent = t('update.chipRetry');
-        chip.classList.add('error');
-        chip.title = u.error || '';
-        chip.onclick = () => updateStartDownload();
-        break;
-      default:
-        visible = false;
-    }
-    chip.style.display = visible ? '' : 'none';
-  }
-  renderUpdateSettingsButton();
-}
-
-function renderUpdateSettingsButton() {
+  const panel = document.getElementById('updatePanel');
   const btn = document.getElementById('checkUpdateBtn');
-  if (!btn) return;
-  const u = UpdateCenter;
-  if (u.state === 'downloading') {
-    btn.disabled = true;
-    btn.textContent = t('settings.downloadProgress', { percent: u.percent });
-    btn.onclick = null;
-    return;
-  }
-  if (u.state === 'ready') {
-    btn.disabled = false;
-    btn.textContent = t('settings.installRestart');
-    btn.onclick = updateInstall;
-    return;
-  }
-  btn.disabled = false;
-  btn.textContent = t('settings.checkUpdate');
-  btn.onclick = () => updateCheck({ silent: false });
+  const label = document.getElementById('updateActionLabel');
+  const latest = document.getElementById('latestVersion');
+  const progress = document.getElementById('updateProgress');
+  panel.dataset.state = u.state;
+  panel.setAttribute('aria-busy', String(['checking', 'downloading', 'installing'].includes(u.state)));
+  if (u.info) document.getElementById('currentVersion').textContent = `v${u.info.currentVersion}`;
+  latest.hidden = !u.info?.isNewer;
+  latest.textContent = u.info?.isNewer ? t('update.latestVersion', { version: u.info.latestVersion }) : '';
+  progress.hidden = u.state !== 'downloading';
+  progress.setAttribute('aria-valuenow', String(u.percent));
+  document.getElementById('updateProgressFill').style.width = `${u.percent}%`;
+  btn.disabled = ['checking', 'downloading', 'installing'].includes(u.state);
+  btn.onclick = u.state === 'ready' ? updateInstall : () => updateCheck();
+  label.textContent = u.state === 'ready' ? t('settings.installRestart')
+    : u.state === 'installing' ? t('update.installing')
+    : u.state === 'error' ? t('update.chipRetry') : t('settings.checkUpdate');
+  const status = {
+    checking: t('settings.checking'),
+    downloading: t('settings.downloadProgress', { percent: u.percent }),
+    ready: t('settings.downloadComplete'),
+    installing: t('update.restarting'),
+    error: u.error ? `${t('settings.updateError')}: ${u.error}` : t('settings.updateError'),
+    idle: !u.info ? t('update.autoCheck') : u.info.isNewer && u.info.autoCapable === false
+      ? t('settings.devModeNoUpdate') : t('settings.upToDate'),
+  };
+  setUpdateStatus(status[u.state]);
 }
 
 // 保留初始化入口：订阅下载进度并做一次启动静默检测
 function setupAutoUpdater() {
+  renderUpdateUi();
   window.electronAPI.onUpdateDownloadProgress(({ percent }) => {
     if (UpdateCenter.state === 'downloading') {
       UpdateCenter.percent = percent;
@@ -3253,6 +3237,7 @@ function setupAutoUpdater() {
     }
   });
   setTimeout(() => updateCheck({ silent: true }), 3000); // 错峰：不抢占首屏加载
+  setInterval(() => updateCheck({ silent: true }), 15 * 60 * 1000);
 }
 
 // === Command Input: Paste Image & Drag File Support ===

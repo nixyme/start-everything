@@ -243,7 +243,7 @@ mod native {
 
     async fn release(app: &AppHandle) -> Result<Value, String> {
         http_client(app)?.get(RELEASE_API).header("Accept", "application/vnd.github+json")
-            .send().await.map_err(|e| e.to_string())?.error_for_status().map_err(|e| e.to_string())?
+            .send().await.map_err(|e| format!("{e:#}"))?.error_for_status().map_err(|e| format!("{e:#}"))?
             .json().await.map_err(|e| e.to_string())
     }
 
