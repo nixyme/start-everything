@@ -120,8 +120,11 @@
     try {
       return await window.__TAURI__.core.invoke('api', { action, args });
     } catch (error) {
-      showFatalError(error, action);
-      log('error', 'desktop-request-failed', { action, error: normalizeError(error).error });
+      const failure = normalizeError(error);
+      log('error', 'desktop-request-failed', { action, error: failure.error });
+      if (!['check-for-update'].includes(action)) {
+        showFatalError(error, action);
+      }
       return normalizeError(error);
     }
   }
